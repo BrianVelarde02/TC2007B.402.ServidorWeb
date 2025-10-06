@@ -1,0 +1,26 @@
+## Archivos de usuario (IDE / Visual Studio)
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.json
+
+## Salidas de compilación
+bin/
+obj/
+out/
+
+## Archivos de configuración locales
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+.env
+
+## Logs
+*.log
+
+## Archivos de sistema
+*.swp
+*.DS_Store
+Thumbs.db
