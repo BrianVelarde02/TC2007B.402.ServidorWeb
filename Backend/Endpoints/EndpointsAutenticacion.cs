@@ -1,8 +1,11 @@
 using Backend.Modelos.Usuario;
+using Backend.Modelos.Tarjetas_Digitales;
 using Backend.Ayudantes;
 using Backend.Servicios;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using QRCoder;
+
 
 namespace Backend.Endpoints
 {
@@ -36,7 +39,7 @@ namespace Backend.Endpoints
             // ------------------- LOGIN -------------------
             app.MapPost("/api/auth/login", async (IServicioAutenticacion servicio, UsuarioLoginDto dto, IDataProtectionProvider provider) =>
             {
-                var protector = provider.CreateProtector("UserData");
+                var protector = provider.CreateProtector("UserData"); 
                 try
                 {
                     var usuario = await servicio.LoginAsync(dto, protector);
@@ -63,12 +66,20 @@ namespace Backend.Endpoints
                 var usuario = await db.usuarios.FindAsync(id);
                 if (usuario == null)
                     return Results.NotFound(new { mensaje = "Usuario no encontrado" });
-
+            
+                // Borrar tarjetas asociadas
+                var tarjetas = await db.tarjetas_digitales
+                    .Where(t => t.id_usuario == id)
+                    .ToListAsync();
+                db.tarjetas_digitales.RemoveRange(tarjetas);
+            
+                // Borrar usuario
                 db.usuarios.Remove(usuario);
                 await db.SaveChangesAsync();
-
-                return Results.Ok(new { mensaje = $"Usuario eliminado correctamente" });
+            
+                return Results.Ok(new { mensaje = "Usuario y tarjetas eliminados correctamente" });
             }).WithName("EliminarUsuario");
+
             
             // Visualizar lista de usuarios 
             app.MapGet("/usuarios/lista", async (ApiDbContext db, IDataProtectionProvider provider) =>
@@ -103,6 +114,41 @@ namespace Backend.Endpoints
                 return Results.Ok(listaUsuarios);
             })
             .WithName("ListaUsuarios");
+            
+            //Para generar el QR
+            app.MapGet("/usuario/{id}/qr", async (ApiDbContext db, int id, IDataProtectionProvider provider) =>
+            {
+                // Buscar usuario
+                var usuario = await db.usuarios.FindAsync(id);
+                if (usuario == null)
+                    return Results.NotFound(new { mensaje = "Usuario no encontrado" });
+            
+                var protector = provider.CreateProtector("UserData");
+                string nombre = ServicioAutenticacion.SafeUnprotect(protector, usuario.nombre);
+            
+                // Buscar tarjetas del usuario
+                var tarjetas = await db.tarjetas_digitales
+                    .Where(t => t.id_usuario == id)
+                    .Select(t => t.numero_tarjeta)
+                    .ToListAsync();
+            
+                // Datos que queremos en el QR
+                var data = new
+                {
+                    nombre_usuario = nombre,
+                    tarjetas = tarjetas
+                };
+            
+                string jsonData = System.Text.Json.JsonSerializer.Serialize(data);
+            
+                // Generar QR en SVG
+                using var qrGenerator = new QRCodeGenerator();
+                var qrData = qrGenerator.CreateQrCode(jsonData, QRCodeGenerator.ECCLevel.Q);
+                var qrCode = new SvgQRCode(qrData);
+                string svgImage = qrCode.GetGraphic(5);
+            
+                return Results.Content(svgImage, "image/svg+xml");
+            }).WithName("GenerarQRSVGPorUsuario");
         }
     }
 }

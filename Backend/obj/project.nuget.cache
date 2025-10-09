@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "QqLVqL2011L7rC/aOhKdNM4LwyaOzuvEdj1G9IBydrrR7nVMIFoSlF3J11Tankr4OJZieFE8a4YHD6R2o3FKmg==",
+  "dgSpecHash": "mi0CEmoMAQwfaR0khFDeAqRUg47xQKkKxPxTVhFAhihL3Np/R180QwT1FsjzE0DXm4FyGg7cyMTqm8wn5uisVg==",
   "success": true,
   "projectFilePath": "/home/ubuntu/environment/Backend/Backend.csproj",
   "expectedPackageFiles": [
@@ -44,7 +44,10 @@
     "/home/ubuntu/.nuget/packages/microsoft.win32.systemevents/6.0.0/microsoft.win32.systemevents.6.0.0.nupkg.sha512",
     "/home/ubuntu/.nuget/packages/mysqlconnector/2.4.0/mysqlconnector.2.4.0.nupkg.sha512",
     "/home/ubuntu/.nuget/packages/pomelo.entityframeworkcore.mysql/9.0.0/pomelo.entityframeworkcore.mysql.9.0.0.nupkg.sha512",
-    "/home/ubuntu/.nuget/packages/qrcoder/1.6.0/qrcoder.1.6.0.nupkg.sha512",
+    "/home/ubuntu/.nuget/packages/qrcoder/1.7.0/qrcoder.1.7.0.nupkg.sha512",
+    "/home/ubuntu/.nuget/packages/skiasharp/3.119.1/skiasharp.3.119.1.nupkg.sha512",
+    "/home/ubuntu/.nuget/packages/skiasharp.nativeassets.macos/3.119.1/skiasharp.nativeassets.macos.3.119.1.nupkg.sha512",
+    "/home/ubuntu/.nuget/packages/skiasharp.nativeassets.win32/3.119.1/skiasharp.nativeassets.win32.3.119.1.nupkg.sha512",
     "/home/ubuntu/.nuget/packages/swashbuckle.aspnetcore/9.0.4/swashbuckle.aspnetcore.9.0.4.nupkg.sha512",
     "/home/ubuntu/.nuget/packages/swashbuckle.aspnetcore.swagger/9.0.4/swashbuckle.aspnetcore.swagger.9.0.4.nupkg.sha512",
     "/home/ubuntu/.nuget/packages/swashbuckle.aspnetcore.swaggergen/9.0.4/swashbuckle.aspnetcore.swaggergen.9.0.4.nupkg.sha512",

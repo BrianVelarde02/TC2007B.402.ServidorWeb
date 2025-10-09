@@ -37,6 +37,7 @@ if (app.Environment.IsDevelopment())
 
 // Mapear endpoints
 app.MapearEndpointsAutenticacion();
+app.MapearEndpointsTarjetas();
 
 // Escuchar en todas las IPs externas y puerto 8080
 app.Urls.Add("http://0.0.0.0:8080");
