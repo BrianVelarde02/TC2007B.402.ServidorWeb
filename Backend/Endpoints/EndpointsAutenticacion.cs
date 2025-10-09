@@ -1,4 +1,5 @@
 using Backend.Modelos.Usuario;
+using Backend.Ayudantes;
 using Backend.Servicios;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -78,47 +79,21 @@ namespace Backend.Endpoints
                 
                 var listaUsuarios = usuarios.Select(u =>
                 {
-                    //Descencriptar
+                    //Desencriptando la info
                     string nombre = ServicioAutenticacion.SafeUnprotect(protector, u.nombre);
                     string apellidos = ServicioAutenticacion.SafeUnprotect(protector, u.apellidos);
                     string telefono = ServicioAutenticacion.SafeUnprotect(protector, u.telefono ?? "");
                     string correo = ServicioAutenticacion.SafeUnprotect(protector, u.correo);
                     string curp = ServicioAutenticacion.SafeUnprotect(protector, u.curp ?? "");
-            
-                    DateTime? fechaNacimiento = null;
-            
-                    // Extraer fecha de nacimiento del CURP correctamente
-                    if (!string.IsNullOrEmpty(curp) && curp.Length >= 10)
-                    {
-                        string anioStr = curp.Substring(4, 2); // posiciones 4-5
-                        string mesStr  = curp.Substring(6, 2); // posiciones 6-7
-                        string diaStr  = curp.Substring(8, 2); // posiciones 8-9
-            
-                        if (int.TryParse(diaStr, out int dia) &&
-                            int.TryParse(mesStr, out int mes) &&
-                            int.TryParse(anioStr, out int anio))
-                        {
-                            if (anio <= DateTime.UtcNow.Year % 100)
-                                anio += 2000;
-                            else
-                                anio += 1900;
-            
-                            try
-                            {
-                                fechaNacimiento = new DateTime(anio, mes, dia);
-                            }
-                            catch
-                            {
-                                fechaNacimiento = null;
-                            }
-                        }
-                    }
+
+                    // Funcion para extraer la fecha
+                    DateTime? fechaNacimiento = CurpHelper.ExtraerFechaDeCurp(curp);
             
                     return new
                     {
                         Nombre = nombre,
-                        apellidos = apellidos,
-                        curp = curp,
+                        Apellidos = apellidos,
+                        Curp = curp,
                         FechaNacimiento = fechaNacimiento,
                         Telefono = telefono,
                         Correo = correo
@@ -126,8 +101,8 @@ namespace Backend.Endpoints
                 }).ToList();
             
                 return Results.Ok(listaUsuarios);
-            }).WithName("ListaUsuarios");
-
+            })
+            .WithName("ListaUsuarios");
         }
     }
 }
