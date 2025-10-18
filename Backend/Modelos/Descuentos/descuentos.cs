@@ -4,9 +4,9 @@ namespace Backend.Modelos.Descuentos
     {
         public int id { get; set; }  // id INT (Primary Key)
     
-        public int id_negocio { get; set; }
+        public int? id_negocio { get; set; }
         
-        public int id_producto { get; set; }
+        public int? id_producto { get; set; }
         
         public string titulo { get; set; }
         

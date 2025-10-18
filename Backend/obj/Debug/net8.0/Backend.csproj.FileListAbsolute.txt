@@ -151,3 +151,4 @@ C:/Users/brian/Desktop/GitHub/RepositorioWeb/ServidorBeneficioJoven/Backend/obj/
 /home/ubuntu/environment/Backend/bin/Debug/net8.0/runtimes/win-arm64/native/libSkiaSharp.dll
 /home/ubuntu/environment/Backend/bin/Debug/net8.0/runtimes/win-x64/native/libSkiaSharp.dll
 /home/ubuntu/environment/Backend/bin/Debug/net8.0/runtimes/win-x86/native/libSkiaSharp.dll
+/home/ubuntu/environment/Backend/bin/Debug/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll

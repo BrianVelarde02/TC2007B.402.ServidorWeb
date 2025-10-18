@@ -6,6 +6,8 @@ namespace Backend.Modelos.Productos
     
         public int id_negocio { get; set; }
         
+        public string nombre { get; set; }
+        
         public int precio_centavos { get; set; }
         
         public int stock_cantidad { get; set; }

@@ -17,6 +17,7 @@ namespace Backend.Ayudantes
                 string mesStr = curp.Substring(6, 2);  // posiciones 6-7
                 string diaStr = curp.Substring(8, 2);  // posiciones 8-9
 
+
                 if (int.TryParse(anioStr, out int anio) &&
                     int.TryParse(mesStr, out int mes) &&
                     int.TryParse(diaStr, out int dia))

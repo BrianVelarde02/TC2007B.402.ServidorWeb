@@ -1,6 +1,10 @@
 using Isopoh.Cryptography.Argon2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Backend.Modelos.Usuario;
 using Backend.Modelos.Tarjetas_Digitales;
 
@@ -10,15 +14,18 @@ namespace Backend.Servicios
     {
         Task<UsuarioDto> RegistrarAsync(UsuarioCrearDto dto, IDataProtector protector);
         Task<UsuarioDto> LoginAsync(UsuarioLoginDto dto, IDataProtector protector);
+        string GenerarToken(UsuarioDto usuario);
     }
 
     public class ServicioAutenticacion : IServicioAutenticacion
     {
         private readonly ApiDbContext _db;
+        private readonly IConfiguration _config;
 
-        public ServicioAutenticacion(ApiDbContext db)
+        public ServicioAutenticacion(ApiDbContext db, IConfiguration config)
         {
             _db = db;
+            _config = config;
         }
 
         // MÉTODO USADO PARA DESENCRIPTAR
@@ -35,16 +42,16 @@ namespace Backend.Servicios
                 throw new ArgumentException("Correo es obligatorio");
             if (string.IsNullOrWhiteSpace(dto.contrasena))
                 throw new ArgumentException("Contraseña es obligatoria");
-
+            
             var usuarios = await _db.usuarios.ToListAsync();
 
             // Validaciones únicas
             if (usuarios.Any(u => SafeUnprotect(protector, u.correo) == dto.correo))
                 throw new InvalidOperationException("El correo ya está registrado");
             if (usuarios.Any(u => SafeUnprotect(protector, u.telefono) == dto.telefono))
-                throw new InvalidOperationException("El telefono ya está registrado");
+                throw new InvalidOperationException("El teléfono ya está registrado");
             if (usuarios.Any(u => SafeUnprotect(protector, u.curp) == dto.curp))
-                throw new InvalidOperationException("El curp ya está registrado");
+                throw new InvalidOperationException("El CURP ya está registrado");
 
             // Hash de contraseña
             string passwordHash = Argon2.Hash(dto.contrasena);
@@ -71,7 +78,7 @@ namespace Backend.Servicios
             string numeroTarjeta;
             do
             {
-                numeroTarjeta = GenerarNumeroTarjeta(); // función para 16 dígitos
+                numeroTarjeta = GenerarNumeroTarjeta();
             } while (await _db.tarjetas_digitales.AnyAsync(t => t.numero_tarjeta == numeroTarjeta));
 
             var tarjeta = new tarjetas_digitales
@@ -102,19 +109,18 @@ namespace Backend.Servicios
             };
         }
 
-        // Método auxiliar para generar número de tarjeta
         private string GenerarNumeroTarjeta()
         {
             var rnd = new Random();
             var sb = new System.Text.StringBuilder();
             for (int i = 0; i < 16; i++)
             {
-                sb.Append(rnd.Next(0, 10)); // dígitos del 0 al 9
+                sb.Append(rnd.Next(0, 10));
             }
             return sb.ToString();
         }
 
-        // MÉTODO DE LOGIN (sin cambios)
+        // MÉTODO DE LOGIN
         public async Task<UsuarioDto> LoginAsync(UsuarioLoginDto dto, IDataProtector protector)
         {
             if (string.IsNullOrWhiteSpace(dto.Correo))
@@ -133,7 +139,7 @@ namespace Backend.Servicios
             if (!Argon2.Verify(user.hash_contrasena, dto.Contrasena))
                 throw new ArgumentException("Contraseña incorrecta");
 
-            return new UsuarioDto
+            var usuarioDto = new UsuarioDto
             {
                 Id = user.id,
                 Correo = dto.Correo,
@@ -146,6 +152,33 @@ namespace Backend.Servicios
                 EstaActivo = user.esta_activo,
                 CreadoEn = user.creado_en
             };
+
+            return usuarioDto;
+        }
+
+        // MÉTODO PARA GENERAR TOKEN JWT
+        public string GenerarToken(UsuarioDto usuario)
+        {
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, usuario.Correo),
+                new Claim("id", usuario.Id.ToString()),
+                new Claim("tipo_usuario", usuario.TipoUsuario ?? "JOVEN"),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: _config["Jwt:Issuer"],
+                audience: _config["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(3),
+                signingCredentials: creds
+            );
+            
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }
