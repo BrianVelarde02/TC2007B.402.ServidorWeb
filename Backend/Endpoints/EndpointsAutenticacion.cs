@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using QRCoder;
 
 
+
 namespace Backend.Endpoints
 {
     public static class EndpointsAutenticacion
@@ -145,7 +146,7 @@ namespace Backend.Endpoints
                     .ToListAsync();
             
                 // Datos que queremos en el QR
-                var data = new
+                var data = new 
                 {
                     nombre = nombre,
                     apellidos = apellidos,
@@ -355,19 +356,44 @@ namespace Backend.Endpoints
             
             // ------------------- LOGIN CON TOKEN -------------------
             app.MapPost("/api/auth/login-token", async (IServicioAutenticacion servicio, UsuarioLoginDto dto, 
-                IDataProtectionProvider provider, IConfiguration config) =>
+            IDataProtectionProvider provider, ApiDbContext db) =>
             {
                 var protector = provider.CreateProtector("UserData");
                 try
                 {
+                    // Login
                     var usuario = await servicio.LoginAsync(dto, protector);
+            
+                    // Inicializar id_negocio en null
+                    int? idNegocio = null;
+            
+                    // Si el usuario es de tipo NEGOCIO, buscamos su negocio
+                    if (usuario.TipoUsuario?.ToUpper() == "NEGOCIO")
+                    {
+                        var negocio = await db.negocios
+                            .FirstOrDefaultAsync(n => n.id_propietario_usuario == usuario.Id);
+            
+                        if (negocio != null)
+                            idNegocio = negocio.id;
+                    }
+            
+                    // Generar token
                     var token = servicio.GenerarToken(usuario);
             
+                    // Devolver info
                     return Results.Ok(new
                     {
                         mensaje = "Inicio de sesión exitoso",
                         token,
-                        usuario
+                        usuario = new
+                        {
+                            usuario.Id,
+                            usuario.Nombre,
+                            usuario.Apellidos,
+                            usuario.Correo,
+                            usuario.TipoUsuario
+                        },
+                        id_negocio = idNegocio
                     });
                 }
                 catch (ArgumentException ex)
@@ -383,6 +409,8 @@ namespace Backend.Endpoints
                     return Results.Problem(detail: ex.Message);
                 }
             }).WithName("LoginUsuarioConToken");
+
+
             
             //probando token
             app.MapGet("/usuarios/lista", async (ApiDbContext db, IDataProtectionProvider provider) =>
@@ -392,6 +420,7 @@ namespace Backend.Endpoints
             
                 var listaUsuarios = usuarios.Select(u =>
                 {
+                    int id = u.id;
                     string nombre = ServicioAutenticacion.SafeUnprotect(protector, u.nombre);
                     string apellidos = ServicioAutenticacion.SafeUnprotect(protector, u.apellidos);
                     string telefono = ServicioAutenticacion.SafeUnprotect(protector, u.telefono ?? "");
@@ -402,6 +431,7 @@ namespace Backend.Endpoints
             
                     return new
                     {
+                        id = id,
                         Nombre = nombre,
                         Apellidos = apellidos,
                         Curp = curp,
@@ -440,6 +470,10 @@ namespace Backend.Endpoints
             
                 if (!string.IsNullOrWhiteSpace(usuarioActualizado.Curp))
                     usuarioExistente.curp = protector.Protect(usuarioActualizado.Curp);
+                    
+                if (!string.IsNullOrWhiteSpace(usuarioActualizado.Correo))
+                    usuarioExistente.correo = protector.Protect(usuarioActualizado.Correo);
+                
             
                 await db.SaveChangesAsync();
             
@@ -451,12 +485,89 @@ namespace Backend.Endpoints
                         id = usuarioExistente.id,
                         nombre = usuarioActualizado.Nombre,
                         apellidos = usuarioActualizado.Apellidos,
+                        correo = usuarioActualizado.Correo,
                         telefono = usuarioActualizado.Telefono,
                         direccion = usuarioActualizado.Direccion,
                         curp = usuarioActualizado.Curp
                     }
                 });
-            });
+            }).WithName("ActualizarUsuarioPorId");
+            
+            // Obtener cantidad de visitas (redenciones) por negocio
+            app.MapGet("/api/negocios/{id_negocio:int}/visitas", async (int id_negocio, ApiDbContext db) =>
+            {
+                // Verificar que el negocio exista
+                var negocio = await db.negocios.FindAsync(id_negocio);
+                if (negocio == null)
+                    return Results.NotFound(new { mensaje = "Negocio no encontrado." });
+            
+                // Contar redenciones asociadas a este negocio
+                var totalVisitas = await db.redenciones
+                    .Join(db.descuentos,
+                          r => r.id_descuento,
+                          d => d.id,
+                          (r, d) => new { Redencion = r, Descuento = d })
+                    .Where(x => x.Descuento.id_negocio == id_negocio)
+                    .CountAsync();
+            
+                // También puedes devolver detalles si lo necesitas
+                /*var detalleVisitas = await db.redenciones
+                    .Join(db.descuentos,
+                          r => r.id_descuento,
+                          d => d.id,
+                          (r, d) => new { r.id, r.redimido_en, d.id_negocio })
+                    .Where(x => x.id_negocio == id_negocio)
+                    .Select(x => new
+                    {
+                        IdRedencion = x.id,
+                        Fecha = x.redimido_en
+                    })
+                    .ToListAsync();*/
+            
+                return Results.Ok(new
+                {
+                    Negocio = negocio.nombre,
+                    TotalVisitas = totalVisitas,
+                    //Detalles = detalleVisitas
+                });
+            }).WithName("ObtenerVisitasPorNegocio");
+            
+            /*
+            //Obtener Logo del negocio
+            app.MapGet("/api/negocios/{id}/logo", async (int id, ApiDbContext db) =>
+            {
+                var negocio = await db.negocios.FindAsync(id);
+                if (negocio == null || negocio.logo == null)
+                    return Results.NotFound(new { mensaje = "Logo no encontrado." });
+            
+                return Results.File(negocio.logo, "image/png"); // o "image/jpeg"
+            }).WithName("GenerarLogo");
+            
+            //Subir logo a negocio
+            app.MapPost("/api/negocios/{id_negocio:int}/logo", async (int id_negocio, IFormFile archivo, ApiDbContext db) =>
+            {
+                // Verificar que el negocio exista
+                var negocio = await db.negocios.FindAsync(id_negocio);
+                if (negocio == null)
+                    return Results.NotFound(new { mensaje = "Negocio no encontrado" });
+            
+                // Validar archivo
+                if (archivo == null || archivo.Length == 0)
+                    return Results.BadRequest(new { mensaje = "Archivo no válido" });
+            
+                // Convertir el archivo a byte[]
+                using var ms = new MemoryStream();
+                await archivo.CopyToAsync(ms);
+                negocio.logo = ms.ToArray();
+            
+                await db.SaveChangesAsync();
+            
+                return Results.Ok(new { mensaje = "Logo actualizado correctamente" });
+            })
+            .WithName("SubirLogoNegocio")
+            .WithMetadata(new Microsoft.AspNetCore.Mvc.IgnoreAntiforgeryTokenAttribute());
+
+            */
         }
     }
 }

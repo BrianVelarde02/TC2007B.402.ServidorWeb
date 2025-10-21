@@ -13,5 +13,7 @@ namespace Backend.Modelos.Negocios
         public int id_propietario_usuario { get; set; }
     
         public DateTime creado_en { get; set; } = DateTime.UtcNow; // TIMESTAMP
+        
+        public byte[]? logo { get; set; }
     }
 }
