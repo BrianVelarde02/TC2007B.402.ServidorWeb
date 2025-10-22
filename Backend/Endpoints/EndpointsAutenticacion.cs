@@ -566,8 +566,11 @@ namespace Backend.Endpoints
             })
             .WithName("SubirLogoNegocio")
             .WithMetadata(new Microsoft.AspNetCore.Mvc.IgnoreAntiforgeryTokenAttribute());
-
             */
+            
+            // Editar producto
+            
+            
         }
     }
 }

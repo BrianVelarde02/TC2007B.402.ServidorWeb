@@ -94,12 +94,5 @@ app.UseAuthorization();
 app.MapearEndpointsAutenticacion();
 app.MapearEndpointsTarjetas();
 
-// ==================== CONFIGURACIÓN DE KESTREL ====================
-app.Urls.Clear();
-app.Urls.Add("http://localhost:5000"); 
-
 // ==================== RUN ====================
 app.Run();
-
-
-// 54.144.192.111:8080/inicio
