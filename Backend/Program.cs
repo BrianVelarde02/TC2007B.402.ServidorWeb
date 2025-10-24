@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting; 
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -71,6 +73,30 @@ builder.Services.AddDataProtection();
 builder.Services.AddScoped<IServicioCifrado, ServicioCifrado>();
 builder.Services.AddScoped<IServicioAutenticacion, ServicioAutenticacion>();
 
+// ==================== RATE LIMITER ====================
+
+builder.Services.AddRateLimiter(options =>
+{
+    // Esta es la política "por IP"
+    options.AddPolicy("login-limiter", context => RateLimitPartition.GetFixedWindowLimiter(
+        
+        partitionKey: context.Connection.RemoteIpAddress?.ToString(), 
+        
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5, // 5 intentos
+            Window = TimeSpan.FromMinutes(1), // por 1 minuto
+            QueueLimit = 0
+        }));
+
+    // Esto es lo que pasa cuando alguien es rechazado
+    options.OnRejected = (context, _) =>
+    {
+        context.HttpContext.Response.StatusCode = 429; // Too Many Requests
+        return new ValueTask(context.HttpContext.Response.WriteAsync("Demasiados intentos. Por favor, espera un minuto."));
+    };
+});
+
 // ==================== CONSTRUCCIÓN DEL APP ====================
 var app = builder.Build();
 
@@ -78,6 +104,8 @@ var app = builder.Build();
 
 // Habilitar CORS antes de cualquier endpoint
 app.UseCors("AllowAll");
+
+app.UseRateLimiter();
 
 // Swagger solo en desarrollo
 if (app.Environment.IsDevelopment())
